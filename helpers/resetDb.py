@@ -35,6 +35,7 @@ if(input(f"This will fully reset the database \"{filename}\". Are you sure you w
     tweetsTable = """   CREATE TABLE TWEETS (
                         id INTEGER PRIMARY KEY,
                         queryId INTEGER,
+                        tweetId INTEGER,
                         language CHAR,
                         username CHAR,
                         originalLocation CHAR,

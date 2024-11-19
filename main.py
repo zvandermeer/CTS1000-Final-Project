@@ -29,7 +29,7 @@ def buildQuery(searchData):
         query += f"{term} "
     
     if searchData["exactPhrase"] != "":
-        query += f"\"{searchData["exactPhrase"]}\" "
+        query += f"\"{searchData['exactPhrase']}\" "
 
     if len(searchData["anyTerms"]) > 0:
         query += "("
@@ -47,9 +47,9 @@ def buildQuery(searchData):
 
     query += "lang:en "
 
-    query += f"until:{searchData["dateEnd"]} "
+    query += f"until:{searchData['dateEnd']} "
 
-    query += f"since:{searchData["dateStart"]}"
+    query += f"since:{searchData['dateStart']}"
 
     return query
 
@@ -74,6 +74,7 @@ def createDatabase():
     tweetsTable = """   CREATE TABLE TWEETS (
                         id INTEGER PRIMARY KEY,
                         queryId INTEGER,
+                        tweetId INTEGER,
                         language CHAR,
                         username CHAR,
                         originalLocation CHAR,
@@ -101,11 +102,11 @@ def getQueryId(query, searchData):
     connection = sqlite3.connect(filename)
     cursor = connection.cursor()
 
-    queryId = cursor.execute("SELECT id FROM SEARCHES WHERE fullQuery = ?", (query,)).fetchall()
+    queryId = cursor.execute("SELECT id FROM SEARCHES WHERE fullQuery = ?", (query,)).fetchone()
 
     if(queryId == None):
         cursor.execute("INSERT INTO SEARCHES (anyTerms, exactTerms, exactPhrase, notTerms, dateStart, dateEnd, fullQuery) VALUES (?,?,?,?,?,?,?)", 
-                       (searchData["anyTerms"], searchData["exactTerms"], searchData["exactPhrase"], searchData["notTerms"], searchData["dateStart"], searchData["dateEnd"], query))
+                       (str(searchData["anyTerms"]), str(searchData["exactTerms"]), searchData["exactPhrase"], str(searchData["notTerms"]), searchData["dateStart"], searchData["dateEnd"], query))
         
         id = cursor.lastrowid
 
@@ -196,6 +197,7 @@ def processBatch(tweets, queryId):
 
         myTweetDict = {
             "queryId": queryId,
+            "tweetId": tweet.id,
             "lang": tweet.lang,
             "username": tweet.user.name,
             "location": tweet.user.location,
@@ -205,7 +207,7 @@ def processBatch(tweets, queryId):
             "likes": tweet.favorite_count
         }
 
-        cursor.execute("INSERT INTO TWEETS (queryId, language, username, originalLocation, content, creationDate, retweets, likes) VALUES (?,?,?,?,?,?,?,?)", tuple(myTweetDict.values()))
+        cursor.execute("INSERT INTO TWEETS (queryId, tweetId, language, username, originalLocation, content, creationDate, retweets, likes) VALUES (?,?,?,?,?,?,?,?,?)", tuple(myTweetDict.values()))
 
         myTweetDict["id"] = cursor.lastrowid
 
@@ -282,7 +284,6 @@ if __name__ == "__main__":
     queryId = getQueryId(query, searchData)
 
     processLocationThread = threading.Thread(target=processLocation, args=())
-
     processLocationThread.start()
 
     asyncio.run(scrape(query, searchData["minTweets"], queryId))
