@@ -1,0 +1,6 @@
+.vscode/
+auth.ini
+cookies.json
+search.json
+.DS_Store
+*.sqlite3

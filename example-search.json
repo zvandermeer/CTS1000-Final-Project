@@ -1,0 +1,9 @@
+{
+    "anyTerms": [""],
+    "exactTerms": [""],
+    "exactPhrase": "",
+    "notTerms": [""],
+    "dateStart": "2023-01-01",
+    "dateEnd": "2024-01-01",
+    "minTweets": 100
+}
