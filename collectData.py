@@ -9,10 +9,11 @@ from configparser import RawConfigParser
 from datetime import datetime
 from random import randint
 
+import requests
 import torch
-from geopy.geocoders import Nominatim
 from transformers import pipeline
 from twikit import Client, TooManyRequests
+import urllib
 
 filename = ""
 
@@ -239,20 +240,28 @@ def processLocation():
     connection = sqlite3.connect(filename)
     cursor = connection.cursor()
 
-    geolocator = Nominatim(user_agent="CTS1000-Final-Project")
-
     while(not finished_obtaining_tweets or len(location_queue) > 0):
         if(len(location_queue) > 0):
             myItem = location_queue.pop(0)
 
-            print(f'{datetime.now()} - Processing location for \"{myItem["location"]}\"')
+            if(myItem['location'] != ""):
 
-            location = geolocator.geocode(myItem["location"])
+                print(f"{datetime.now()} - Processing location for \"{myItem['location']}\"")
 
-            if(location != None):
-                cursor.execute("UPDATE TWEETS SET locationLatitude = ?, locationLongitude = ? WHERE id = ?", (location.latitude, location.longitude, myItem["id"]))
+                baseUrl = "https://nominatim.openstreetmap.org/search?q="
 
-                connection.commit()
+                parameters = urllib.parse.quote_plus(myItem['location'], safe='')
+
+                locationData = json.loads(requests.get(baseUrl+parameters+"&format=json&accept-language=en").content)
+
+                if(locationData != []):
+                    cursor.execute("UPDATE TWEETS SET locationLatitude = ?, locationLongitude = ?, validLocation = 1 WHERE id = ?", (locationData[0]["lat"], locationData[0]["lon"], myItem["id"]))
+
+                    connection.commit()
+                else:
+                    cursor.execute("UPDATE TWEETS SET validLocation = 0 WHERE id = ?", (myItem['id'],))
+
+                    connection.commit()
 
             time.sleep(1.1)
 
@@ -283,7 +292,7 @@ if __name__ == "__main__":
     
     queryId = getQueryId(query, searchData)
 
-    processLocationThread = threading.Thread(target=processLocation, args=())
-    processLocationThread.start()
+    # processLocationThread = threading.Thread(target=processLocation, args=())
+    # processLocationThread.start()
 
     asyncio.run(scrape(query, searchData["minTweets"], queryId))

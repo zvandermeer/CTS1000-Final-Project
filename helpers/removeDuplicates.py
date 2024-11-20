@@ -22,14 +22,17 @@ cursor = connection.cursor()
 
 rows = cursor.execute("SELECT tweetId, COUNT(*) c FROM TWEETS GROUP BY tweetId HAVING c > 1;").fetchall()
 
+duplicateCount = 0
+
 for item in rows:
     duplicates = cursor.execute("SELECT id FROM TWEETS WHERE tweetId = ?", (item[0],)).fetchall()
 
     for i in range(len(duplicates)):
         if(i != 0):
+            duplicateCount += 1
             cursor.execute("DELETE FROM TWEETS WHERE id = ?", (duplicates[i][0],))
 
 connection.commit()
 connection.close()
 
-print("Duplicates removed")
+print(f"Removed {duplicateCount} duplicate(s)")
