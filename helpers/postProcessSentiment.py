@@ -1,3 +1,6 @@
+# Post-process the sentiment for tweets, if not processed during
+# initial scraping
+
 import os
 import sqlite3
 import sys

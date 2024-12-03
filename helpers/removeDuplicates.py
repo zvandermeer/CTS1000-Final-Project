@@ -1,7 +1,8 @@
+# Remove duplicate entries from the database
+
 import os
 import sqlite3
 import sys
-
 
 try:
     if sys.argv[1] == "":

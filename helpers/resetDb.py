@@ -1,3 +1,5 @@
+# Reset or create the database with a given filename
+
 import sqlite3
 import sys
 
