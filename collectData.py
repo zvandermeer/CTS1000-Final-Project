@@ -9,6 +9,8 @@ from configparser import RawConfigParser
 from datetime import datetime
 from random import randint
 
+import httpcore
+import httpx
 import requests
 import torch
 from transformers import pipeline
@@ -55,7 +57,7 @@ def buildQuery(searchData):
 
 # Create new database
 def createDatabase():
-    connection = sqlite3.connect(dbFilename)
+    connection = sqlite3.connect(dbFilename, timeout=15)
     cursor = connection.cursor()
 
     searchesTable = """ CREATE TABLE SEARCHES (
@@ -100,14 +102,14 @@ def createDatabase():
 
 # If this is a new query, create a new entry in database, otherwise return ID of previous query
 def getQueryId(query, searchData):
-    connection = sqlite3.connect(dbFilename)
+    connection = sqlite3.connect(dbFilename, timeout=15)
     cursor = connection.cursor()
 
     queryId = cursor.execute("SELECT id FROM SEARCHES WHERE fullQuery = ?", (query,)).fetchone()
 
     if(queryId == None):
-        cursor.execute("INSERT INTO SEARCHES (anyTerms, exactTerms, exactPhrase, notTerms, fullQuery) VALUES (?,?,?,?,?)", 
-                       (str(searchData["anyTerms"]), str(searchData["exactTerms"]), searchData["exactPhrase"], str(searchData["notTerms"]), query))
+        cursor.execute("INSERT INTO SEARCHES (anyTerms, exactTerms, exactPhrase, notTerms, fullQuery, prettyName) VALUES (?,?,?,?,?,?)", 
+                       (str(searchData["anyTerms"]), str(searchData["exactTerms"]), searchData["exactPhrase"], str(searchData["notTerms"]), query, searchData["prettyName"]))
         
         id = cursor.lastrowid
 
@@ -142,19 +144,16 @@ async def scrape(query: str, minTweets: int, queryId: int):
         await client.login(auth_info_1=username, auth_info_2=email, password=password)
         client.save_cookies('cookies.json')
     
-    for i in range(3):
+    for i in range(6):
+        failCount = 0
         tweet_count = 0
         tweets = None
 
-        if(i == 0):
-            print(f'{datetime.now()} - Processing 2010-2014')
-            newQuery = query + "until:2015-01-01 since:2010-01-01"
-        elif(i == 1):
-            print(f'{datetime.now()} - Processing 2015-2019')
-            newQuery = query + "until:2020-01-01 since:2015-01-01"
-        else:
-            print(f'{datetime.now()} - Processing 2020-2024')
-            newQuery = query + "until:2025-01-01 since:2020-01-01"
+        baseYear = 2019 + i
+
+        print(f'{datetime.now()} - Processing {baseYear}')
+
+        newQuery = query + f"until:{baseYear+1}-01-01 since:{baseYear}-01-01"
 
         # Loop until the desired number of tweets has been reached
         while tweet_count < minTweets:
@@ -182,9 +181,35 @@ async def scrape(query: str, minTweets: int, queryId: int):
                 time.sleep(wait_time)
                 continue
 
+            except httpcore.ConnectTimeout or httpx.ConnectTimeout:
+                print(f'{datetime.now()} - Connection timeout.')
+                if failCount < 3:
+                    print(f'{datetime.now()} - retrying...')
+                    failCount += 1
+                else:
+                    failCount = 0
+                    print(f'{datetime.now()} - Ending')
+                    break
+
+            except httpx.ReadTimeout:
+                print(f'{datetime.now()} - Connection timeout.')
+                if failCount < 3:
+                    print(f'{datetime.now()} - retrying...')
+                    failCount += 1
+                else:
+                    failCount = 0
+                    print(f'{datetime.now()} - Ending')
+                    break
+
             if not tweets:
-                print(f'{datetime.now()} - No more tweets found')
-                break
+                print(f'{datetime.now()} - Search failed.')
+                if failCount < 3:
+                    print(f'{datetime.now()} - retrying...')
+                    failCount += 1
+                else:
+                    failCount = 0
+                    print(f'{datetime.now()} - No more tweets.')
+                    break
 
             tweet_count += len(tweets)
 
@@ -204,7 +229,7 @@ async def scrape(query: str, minTweets: int, queryId: int):
 # Process a batch of tweets
 def processBatch(tweets, queryId):
     # Create new connection to the database
-    connection = sqlite3.connect(dbFilename)
+    connection = sqlite3.connect(dbFilename, timeout=15)
     cursor = connection.cursor()
 
     fullTweetDataList = []
@@ -273,7 +298,7 @@ def processBatch(tweets, queryId):
 # Process location for each tweet
 def processLocation():
     # Connect to the database
-    connection = sqlite3.connect(dbFilename)
+    connection = sqlite3.connect(dbFilename, timeout=15)
     cursor = connection.cursor()
 
     # Base url for the request
@@ -286,7 +311,7 @@ def processLocation():
             myItem = location_queue.pop(0)
 
             # Process if the location is not empty
-            if(myItem['location'] != ""):
+            if(myItem['location'] != "" and myItem['location'] != " "):
                 print(f'{datetime.now()} - Processing location for \"{myItem["location"]}\"')
 
                 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36'}

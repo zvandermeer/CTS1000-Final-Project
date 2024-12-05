@@ -25,9 +25,8 @@ if(input(f"This will fully reset the database \"{filename}\". Are you sure you w
                         exactTerms CHAR,
                         exactPhrase CHAR,
                         notTerms CHAR,
-                        dateStart DATE,
-                        dateEnd DATE,
-                        fullQuery CHAR);
+                        fullQuery CHAR,
+                        prettyName CHAR);
     """
 
     cursor.execute(searchesTable)
@@ -49,6 +48,9 @@ if(input(f"This will fully reset the database \"{filename}\". Are you sure you w
                         likes INTEGER,
                         sentiment CHAR,
                         confidence DOUBLE,
+                        validLocation INTEGER,
+                        countryCode CHAR,
+                        stateCode CHAR,
                         FOREIGN KEY(queryId) REFERENCES SEARCHES(id));
     """
 

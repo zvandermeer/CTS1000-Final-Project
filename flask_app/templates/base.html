@@ -1,0 +1,14 @@
+<!doctype html>
+<title>{% block title %}{% endblock %} - Flaskr</title>
+<head>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <section class="content">
+    <header>
+      {% block header %}{% endblock %}
+    </header>
+    {% block content %}{% endblock %}
+  </section>
+  {% block scripts %}{% endblock %}
+</body>

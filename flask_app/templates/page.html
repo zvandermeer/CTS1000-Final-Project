@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}Header{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+  <a href="/all/">All data</a>
+  <br/>
+  <br/>
+  {% for var in g.data %}
+    <a href="/data/{{ var['id'] }}">{{ var['prettyName'] }}</a>
+  {% endfor %}
+{% endblock %}

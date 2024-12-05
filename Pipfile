@@ -12,7 +12,8 @@ torchaudio = "*"
 tiktoken = "*"
 protobuf = "*"
 sentencepiece = "*"
-geopy = "*"
+flask = "*"
+pycountry = "*"
 
 [dev-packages]
 
